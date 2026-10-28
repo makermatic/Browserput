@@ -30,20 +30,31 @@ sites are kept because the extension ID is fixed by the `key` in `manifest.json`
 
 ### Automatic routing (no click)
 
-Chromium only lets an extension capture a tab after you've interacted with the extension on that tab.
-That's why each routed tab needs one click (or the shortcut) per browser session. To remove the click, launch Brave
-with:
+Brave only lets an extension capture a tab after you've clicked the extension on that tab, and extensions
+can't change that themselves. Without this setup, a newly opened tab for a saved site shows **▶** until you
+click the icon (or press **Alt+Shift+A**).
+
+**Windows, one-time setup:**
+
+1. In the Browserput folder, open `windows` and double-click **Set up automatic routing.cmd**.
+   If Windows says it protected your PC, click *More info* → *Run anyway*.
+2. Type `1` and press Enter. It adds the flag below to every Brave shortcut it finds (desktop, Start menu, taskbar).
+3. Fully close Brave, including its icon near the clock if there is one, and open it again.
+   In `brave://settings/system`, turn off *Continue running background apps* so Brave always fully restarts.
+
+Run the same file and type `2` to undo it. The Browserput settings page shows whether automatic routing is working.
+
+**By hand / macOS / Linux:** launch Brave with
 
 ```
 --allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg
 ```
 
-- **Windows:** right-click the Brave shortcut → Properties → append the flag to the end of **Target**, after the closing quote.
-  Fully quit Brave (including the tray icon) before relaunching.
 - **macOS:** `open -a "Brave Browser" --args --allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg`
 - **Linux:** add the flag to the `Exec=` line of the Brave `.desktop` file.
 
-With the flag, saved sites route on their own as soon as they load.
+If Brave is opened some other way while it isn't already running (for example by clicking a link in another app),
+it starts without the flag. Routing still works, but needs the click until the next restart from a shortcut.
 
 ## How it works (and why it's reliable)
 
@@ -67,7 +78,11 @@ Browserput uses Chromium's **tab capture** instead:
 
 ### Known trade-offs
 
-- Brave shows its "tab is being shared" indicator on routed tabs. That's tab capture and can't be hidden.
+- Brave shows a capture indicator (a small square) on routed tabs. Every tab capture shows it and
+  extensions can't hide it. Only tabs with a saved output show it; other tabs are never captured.
+- Memory: about 45–50 MB for the extension, about the same whether or not anything is routed. The hidden audio
+  page only runs while at least one tab is routed and closes when none is. Check it any time in Brave's task
+  manager (**Shift+Esc**).
 - Routing adds a few tens of milliseconds of audio delay. That's fine for music and tutorials, and lip-sync drift is
   barely noticeable.
 - Browser pages (`brave://…`, the Web Store) can't be captured.
@@ -84,6 +99,7 @@ Browserput uses Chromium's **tab capture** instead:
 | `popup.*` | Toolbar popup (site, volume, output) |
 | `options.*` | Settings: device access, test tones, saved sites, backup |
 | `shared.js` | Helpers used by all of the above |
+| `windows/` | One-time setup that enables automatic routing on Brave shortcuts |
 
 No build step: plain JavaScript modules, loaded unpacked.
 

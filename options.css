@@ -29,6 +29,10 @@ h2 { font-size: 16px; margin: 0 0 8px; }
 section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
 section p { margin: 0 0 12px; color: var(--muted); }
 section p b { color: #e08a00; }
+section b.plain { color: var(--fg); }
+ol { margin: 0 0 12px; padding-left: 20px; color: var(--muted); }
+ol li { margin-bottom: 4px; }
+code { font-size: 13px; }
 .state { color: var(--fg); }
 .state.ok { color: var(--ok); }
 .state.warn { color: var(--warn); }
