@@ -88,29 +88,18 @@ function showSaved(rule) {
   $('forget').hidden = !rule;
 }
 
+// Only speak up when something needs attention; the dropdown already shows
+// where the audio is going.
 function render(result) {
   const status = $('status');
-  status.className = 'status';
-  if (!result) return;
-  switch (result.status) {
-    case 'routed':
-      if (result.fallback) {
-        status.classList.add('warn');
-        status.textContent = `${result.wantedLabel} isn't connected. Playing on the default output until it's back.`;
-      } else {
-        status.classList.add('ok');
-        status.textContent = `Playing on ${result.sinkLabel}`;
-      }
-      break;
-    case 'idle':
-      status.textContent = 'Not routed: this tab plays on the default output.';
-      break;
-    case 'pending':
-      status.classList.add('warn');
-      status.textContent = `Couldn't capture this tab: ${result.error}`;
-      break;
-    default:
-      status.classList.add('warn');
-      status.textContent = `Something went wrong: ${result.error ?? 'unknown error'}`;
+  let message = '';
+  if (result?.status === 'routed' && result.fallback) {
+    message = `${result.wantedLabel} isn't connected. Playing on the default output until it's back.`;
+  } else if (result?.status === 'pending') {
+    message = `Couldn't capture this tab: ${result.error}`;
+  } else if (result?.status === 'error') {
+    message = `Something went wrong: ${result.error ?? 'unknown error'}`;
   }
+  status.textContent = message;
+  status.hidden = !message;
 }

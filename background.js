@@ -32,6 +32,42 @@ async function activeSessions() {
   return (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'list' })) ?? {};
 }
 
+// Captures being started right now, so the document isn't closed under them.
+let starting = 0;
+
+// Stops a tab's capture and, once nothing is routed, closes the offscreen
+// document so the extension holds no memory while idle.
+async function stopSession(tabId) {
+  const sessions = await activeSessions();
+  if (sessions[tabId]) await toOffscreen({ type: 'stop', tabId });
+  await closeOffscreenIfIdle();
+}
+
+async function closeOffscreenIfIdle() {
+  if (starting > 0 || !(await hasOffscreen())) return;
+  if (Object.keys(await activeSessions()).length === 0 && starting === 0) {
+    await chrome.offscreen.closeDocument().catch(() => {});
+  }
+}
+
+// --- Automatic routing detection --------------------------------------------
+
+// Tabs where the user opened the popup or pressed the shortcut. Capture is
+// always allowed on those, so they say nothing about the launch flag.
+async function markInvoked(tabId) {
+  const { invokedTabs = [] } = await chrome.storage.session.get('invokedTabs');
+  if (!invokedTabs.includes(tabId)) await chrome.storage.session.set({ invokedTabs: [...invokedTabs, tabId] });
+}
+
+async function wasInvoked(tabId) {
+  const { invokedTabs = [] } = await chrome.storage.session.get('invokedTabs');
+  return invokedTabs.includes(tabId);
+}
+
+async function recordAutoRouting(active) {
+  await chrome.storage.local.set({ autoRouting: { active, checkedAt: Date.now() } });
+}
+
 // --- Badge -----------------------------------------------------------------
 
 const BADGES = {
@@ -76,21 +112,30 @@ function applyToTab(tabId, url) {
     let result;
 
     if (!needsCapture(rule)) {
-      if (active) await toOffscreen({ type: 'stop', tabId });
+      if (active) await stopSession(tabId);
       result = { status: 'idle' };
     } else if (active) {
       result = await toOffscreen({ type: 'update', tabId, rule });
     } else {
-      let streamId = null;
+      starting++;
       try {
-        // Only succeeds once the extension has been invoked on this tab
-        // (popup, keyboard shortcut), or when the browser was started with
-        // --allowlisted-extension-id. See README "Automatic routing".
-        streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
-      } catch (e) {
-        result = { status: 'pending', error: String(e?.message ?? e) };
+        let streamId = null;
+        const invoked = await wasInvoked(tabId);
+        try {
+          // Only succeeds once the extension has been invoked on this tab
+          // (popup, keyboard shortcut), or when the browser was started with
+          // --allowlisted-extension-id. See README "Automatic routing".
+          streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
+          if (!invoked) await recordAutoRouting(true);
+        } catch (e) {
+          result = { status: 'pending', error: String(e?.message ?? e) };
+          if (/not been invoked/.test(result.error)) await recordAutoRouting(false);
+        }
+        if (streamId) result = await toOffscreen({ type: 'start', tabId, streamId, rule });
+      } finally {
+        starting--;
       }
-      if (streamId) result = await toOffscreen({ type: 'start', tabId, streamId, rule });
+      if (result.status !== 'routed') await closeOffscreenIfIdle();
     }
 
     await setBadge(tabId, result);
@@ -115,7 +160,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   queues.delete(tabId);
-  if ((await activeSessions())[tabId]) await toOffscreen({ type: 'stop', tabId });
+  await stopSession(tabId);
+  const { invokedTabs = [] } = await chrome.storage.session.get('invokedTabs');
+  await chrome.storage.session.set({ invokedTabs: invokedTabs.filter((id) => id !== tabId) });
 });
 
 chrome.runtime.onStartup.addListener(() => applyToAllTabs());
@@ -125,7 +172,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
 });
 
 chrome.commands.onCommand.addListener((command, tab) => {
-  if (command === 'route-current-tab' && tab?.id) applyToTab(tab.id, tab.url);
+  if (command === 'route-current-tab' && tab?.id) markInvoked(tab.id).then(() => applyToTab(tab.id, tab.url));
 });
 
 // Rules edited anywhere (popup, options page, import) take effect immediately
@@ -151,9 +198,11 @@ async function handle(msg) {
     // Opening the popup counts as invoking the extension on the tab, which is
     // what allows tab capture to start.
     case 'popupOpened':
+      await markInvoked(msg.tabId);
       return applyToTab(msg.tabId, msg.url);
 
     case 'saveRule': {
+      await markInvoked(msg.tabId);
       const rules = await getRules();
       if (msg.rule) rules[msg.host] = msg.rule;
       else delete rules[msg.host];
@@ -165,6 +214,7 @@ async function handle(msg) {
     // moved a stream to or from its saved output.
     case 'sessionChanged':
       await setBadge(msg.tabId, msg.result);
+      if (msg.result.status === 'idle') await closeOffscreenIfIdle();
       return {};
   }
 }

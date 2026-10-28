@@ -74,9 +74,7 @@ select {
   font-weight: 700;
   pointer-events: none;
 }
-.status { margin: 10px 0 0; color: var(--muted); min-height: 1.4em; }
-.status.warn { color: var(--warn); }
-.status.ok { color: var(--ok); }
+.status { margin: 10px 0 0; color: var(--warn); }
 .notice p { margin: 0 0 10px; color: var(--muted); }
 button {
   font: inherit;

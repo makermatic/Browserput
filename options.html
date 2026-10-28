@@ -48,12 +48,19 @@
   </section>
 
   <section>
-    <h2>5. Automatic routing (optional)</h2>
-    <p>Chromium only lets an extension capture a tab after you interact with it on that tab, so normally a
-      saved site shows an orange <b>▶</b> badge. Click the icon once (or press the shortcut) and routing starts.
-      The setting is remembered, so you never pick the device again. The click is needed once per tab after you open the browser.</p>
-    <p>To skip the click entirely, start Brave with this flag. It lets only this extension capture tabs
-      by itself:</p>
+    <h2>5. Automatic routing</h2>
+    <p id="autoState" class="state"></p>
+    <p>Brave only lets an extension capture a tab after you click it on that tab. Without automatic routing,
+      a newly opened tab for a saved site shows an orange <b>▶</b> badge until you click the icon (or press the
+      shortcut). Extensions aren't allowed to change this themselves, but a one-time setup on your computer can:</p>
+    <ol>
+      <li>Open the Browserput folder you loaded into Brave, then the <code>windows</code> folder.</li>
+      <li>Double-click <b class="plain">Set up automatic routing.cmd</b> and type <b class="plain">1</b>.
+        If Windows says it protected your PC, click <i>More info</i> → <i>Run anyway</i>.</li>
+      <li>Fully close Brave (including its icon near the clock, if there is one) and open it again.</li>
+    </ol>
+    <p>It adds this setting to your Brave shortcuts. It lets only Browserput capture tabs by itself.
+      Run the same file and type <b class="plain">2</b> to undo it.</p>
     <pre id="flag"></pre>
     <p class="state" id="shortcut"></p>
   </section>

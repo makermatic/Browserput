@@ -4,6 +4,22 @@ const $ = (id) => document.getElementById(id);
 let outputs = [];
 
 $('flag').textContent = `--allowlisted-extension-id=${chrome.runtime.id}`;
+
+async function renderAutoRouting() {
+  const { autoRouting } = await chrome.storage.local.get('autoRouting');
+  const el = $('autoState');
+  if (!autoRouting) {
+    el.textContent = 'Status: not known yet. Open a saved site in a new tab and this will update.';
+    el.className = 'state';
+  } else if (autoRouting.active) {
+    el.textContent = 'Status: working. Saved sites start routing by themselves.';
+    el.className = 'state ok';
+  } else {
+    el.textContent = 'Status: off. New tabs for saved sites need one click on the icon.';
+    el.className = 'state warn';
+  }
+}
+renderAutoRouting();
 chrome.commands.getAll().then((commands) => {
   const cmd = commands.find((c) => c.name === 'route-current-tab');
   $('shortcut').textContent = cmd?.shortcut
@@ -26,6 +42,7 @@ $('grant').onclick = async () => {
 navigator.mediaDevices.addEventListener('devicechange', refresh);
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.rules) renderRules();
+  if (area === 'local' && changes.autoRouting) renderAutoRouting();
 });
 
 async function refresh() {
