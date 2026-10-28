@@ -1,4 +1,4 @@
-<# : Batch launcher. Everything below the #> line is PowerShell.
+<# : Batch launcher; the PowerShell script starts after the closing comment marker.
 @echo off
 powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((Get-Content -LiteralPath '%~f0') -join [Environment]::NewLine)"
 echo.
@@ -34,7 +34,7 @@ foreach ($dir in $deep) { if ($dir -and (Test-Path -LiteralPath $dir)) { $files 
 
 $changed = 0; $already = 0; $found = 0; $denied = @()
 foreach ($file in $files) {
-  $lnk = $shell.CreateShortcut($file.FullName)
+  try { $lnk = $shell.CreateShortcut($file.FullName) } catch { continue }
   if ($lnk.TargetPath -notlike '*\brave.exe') { continue }
   $found++
   $current = $lnk.Arguments
