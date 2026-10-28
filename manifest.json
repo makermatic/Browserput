@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Browserput",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Send each website's audio to its own output device. Remembers your choices per site.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAibgqDTWpNfCr/6VUgLtDNQ96PDZQbu3xBN+BPGIjiOvO/UNLpIG15fy1ItHPoEpEQFhXMcIG3x0TtTYHeOB48Lcv9w61td3WduVCiB4pI5mtiXu4RKUCEWQ55+AScZxIEDYHgq1sNteP3yIKI4/gIZATUR+JKrKqSwl6fDdi/DwcXSIY/OtTHJ5Cqf/W+ZlSckr0Xg6fl3VLkoh9pvsrCeAvAeElsLIM5K8zWGrNcjcm5/UC80yoq/G7liyYzHR2Mx1a4JWhcah3ampu9U8qBgFno0CqYW1DyQO57dob+5UvrpkwXHqGuxVNSaHX6tj6iXRMuMdyKvNU5BXDlyCKSQIDAQAB",
   "minimum_chrome_version": "116",

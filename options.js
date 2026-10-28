@@ -32,12 +32,40 @@ $('grant').onclick = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     stream.getTracks().forEach((t) => t.stop());
   } catch (e) {
-    $('permState').textContent = `Permission wasn't granted (${e.name}). Allow microphone for this extension in the address bar and try again.`;
-    $('permState').className = 'state warn';
+    await showAccessProblem(e);
     return;
   }
   await refresh();
 };
+
+async function micPermission() {
+  try {
+    return (await navigator.permissions.query({ name: 'microphone' })).state;
+  } catch {
+    return 'unknown';
+  }
+}
+
+// Explains why device access failed, with the browser's own wording, since
+// the cause can be Brave, Windows, or another app holding the microphone.
+async function showAccessProblem(error) {
+  const permission = await micPermission();
+  let hint;
+  if (permission === 'denied') {
+    hint = 'Brave is blocking it. Go to brave://settings/content/microphone and set Browserput to Allow.';
+  } else if (error?.name === 'NotAllowedError' && permission === 'granted') {
+    hint = 'Brave allows it, so Windows is probably blocking it: Settings → Privacy & security → Microphone → turn on "Microphone access" and "Let desktop apps access your microphone", then fully restart Brave.';
+  } else if (error?.name === 'NotFoundError') {
+    hint = 'No microphone input was found. Brave needs at least one input device (any mic, or your mixer\'s mic input) enabled in Windows sound settings.';
+  } else if (error?.name === 'NotReadableError') {
+    hint = 'Another app may be holding the microphone exclusively. Close apps using it and try again.';
+  } else {
+    hint = 'Click the button and choose Allow when Brave asks.';
+  }
+  const detail = error ? ` Details: ${error.name}: ${error.message || 'no message'}; Brave permission: ${permission}.` : ` Brave permission: ${permission}.`;
+  $('permState').textContent = `Can't see your audio devices. ${hint}${detail}`;
+  $('permState').className = 'state warn';
+}
 
 navigator.mediaDevices.addEventListener('devicechange', refresh);
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -48,10 +76,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
 async function refresh() {
   const result = await listOutputs();
   outputs = result.outputs;
-  $('permState').textContent = result.permitted
-    ? `Access granted. ${outputs.length} output${outputs.length === 1 ? '' : 's'} found.`
-    : 'Not granted yet.';
-  $('permState').className = result.permitted ? 'state ok' : 'state warn';
+  if (result.permitted) {
+    $('permState').textContent = `Access granted. ${outputs.length} output${outputs.length === 1 ? '' : 's'} found.`;
+    $('permState').className = 'state ok';
+  } else if ((await micPermission()) === 'prompt') {
+    $('permState').textContent = 'Not granted yet.';
+    $('permState').className = 'state warn';
+  } else {
+    await showAccessProblem(null);
+  }
   $('grant').hidden = result.permitted;
   renderOutputs(result.permitted);
   await renderRules();
