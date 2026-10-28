@@ -50,6 +50,13 @@ async function init() {
   // Opening the popup is what lets the extension capture this tab.
   render(await chrome.runtime.sendMessage({ target: 'bg', type: 'popupOpened', tabId: tab.id, url: tab.url }));
 
+  const { autoRouting } = await chrome.storage.local.get('autoRouting');
+  $('autoNote').hidden = !(rule && autoRouting && !autoRouting.active);
+  $('autoHelp').onclick = (e) => {
+    e.preventDefault();
+    chrome.tabs.create({ url: chrome.runtime.getURL('options.html#auto') });
+  };
+
   select.onchange = save;
   $('volume').oninput = () => {
     setVolume(+$('volume').value);

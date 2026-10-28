@@ -65,9 +65,34 @@ $state = if ($enable) { 'ON' } else { 'OFF' }
 Write-Host "  Automatic routing is now $state for $($changed + $already) Brave shortcut(s)." -ForegroundColor Green
 if ($denied.Count -gt 0) {
   Write-Host ''
-  Write-Host '  These shortcuts belong to all users and need administrator rights:' -ForegroundColor Yellow
+  Write-Host '  These shortcuts are shared by all users (the Start menu one is also what Windows search opens):' -ForegroundColor Yellow
   $denied | ForEach-Object { Write-Host "    $_" }
-  Write-Host '  Right-click this file and choose "Run as administrator" to update them too.' -ForegroundColor Yellow
+  $answer = Read-Host '  Update them too? Windows will ask for permission. (Y/N)'
+  if ($answer.Trim() -match '^[Yy]') {
+    # Re-run just the shortcut edit for these files with administrator rights.
+    $list = ($denied | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ','
+    $mode = if ($enable) { '$true' } else { '$false' }
+    $elevated = @"
+`$flag = '$flag'; `$enable = $mode; `$shell = New-Object -ComObject WScript.Shell
+foreach (`$path in @($list)) {
+  `$lnk = `$shell.CreateShortcut(`$path); `$current = `$lnk.Arguments
+  if (`$enable) { if (`$current -notlike "*`$flag*") { `$lnk.Arguments = ("`$current `$flag").Trim() } }
+  else { `$lnk.Arguments = ((`$current -replace [regex]::Escape(`$flag), '') -replace '\s{2,}', ' ').Trim() }
+  `$lnk.Save()
+}
+"@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevated))
+    try {
+      $proc = Start-Process powershell -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
+      if ($proc.ExitCode -eq 0) {
+        Write-Host '  Updated the shared shortcuts too.' -ForegroundColor Green
+      } else {
+        Write-Host '  Could not update the shared shortcuts.' -ForegroundColor Yellow
+      }
+    } catch {
+      Write-Host '  Permission was not given, so the shared shortcuts were left as they were.' -ForegroundColor Yellow
+    }
+  }
 }
 
 Write-Host ''
