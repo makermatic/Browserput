@@ -6,11 +6,23 @@ pause
 exit /b
 #>
 
-# Adds (or removes) the flag that lets Browserput route saved sites without a
+# Adds (or removes) the flags that let Browserput route saved sites without a
 # click, on every Brave shortcut: desktop, Start menu and taskbar.
 
-$flag = '--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg'
+# The first flag allows automatic tab capture. --test-type hides the
+# "unsupported command-line flag" banner Brave shows because of it.
+$flags = @('--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg', '--test-type')
 $shell = New-Object -ComObject WScript.Shell
+
+# Returns shortcut arguments with every Browserput flag removed, then added back if enabling.
+$editArgs = {
+  param($current, $enable, $flags)
+  $result = $current
+  foreach ($f in $flags) { $result = $result -replace ('(^|\s)' + [regex]::Escape($f) + '(?=\s|$)'), ' ' }
+  $result = ($result -replace '\s{2,}', ' ').Trim()
+  if ($enable) { $result = ($result + ' ' + ($flags -join ' ')).Trim() }
+  $result
+}
 
 Write-Host ''
 Write-Host '  Browserput - automatic routing setup' -ForegroundColor Cyan
@@ -38,13 +50,9 @@ foreach ($file in $files) {
   if ($lnk.TargetPath -notlike '*\brave.exe') { continue }
   $found++
   $current = $lnk.Arguments
-  $has = $current -like "*$flag*"
-  if ($enable -eq $has) { $already++; continue }
-  if ($enable) {
-    $lnk.Arguments = ("$current $flag").Trim()
-  } else {
-    $lnk.Arguments = (($current -replace [regex]::Escape($flag), '') -replace '\s{2,}', ' ').Trim()
-  }
+  $updated = & $editArgs $current $enable $flags
+  if ($updated -eq $current) { $already++; continue }
+  $lnk.Arguments = $updated
   try {
     $lnk.Save()
     $changed++
@@ -58,7 +66,7 @@ Write-Host ''
 if ($found -eq 0) {
   Write-Host '  No Brave shortcuts were found.' -ForegroundColor Yellow
   Write-Host "  Add this to your Brave shortcut by hand (Properties > Target, after the closing quote):"
-  Write-Host "  $flag"
+  Write-Host "  $($flags -join ' ')"
   return
 }
 $state = if ($enable) { 'ON' } else { 'OFF' }
@@ -72,12 +80,13 @@ if ($denied.Count -gt 0) {
     # Re-run just the shortcut edit for these files with administrator rights.
     $list = ($denied | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ','
     $mode = if ($enable) { '$true' } else { '$false' }
+    $flagList = '@(' + (($flags | ForEach-Object { "'$_'" }) -join ',') + ')'
     $elevated = @"
-`$flag = '$flag'; `$enable = $mode; `$shell = New-Object -ComObject WScript.Shell
+`$flags = $flagList; `$enable = $mode; `$shell = New-Object -ComObject WScript.Shell
+`$editArgs = {$($editArgs.ToString())}
 foreach (`$path in @($list)) {
-  `$lnk = `$shell.CreateShortcut(`$path); `$current = `$lnk.Arguments
-  if (`$enable) { if (`$current -notlike "*`$flag*") { `$lnk.Arguments = ("`$current `$flag").Trim() } }
-  else { `$lnk.Arguments = ((`$current -replace [regex]::Escape(`$flag), '') -replace '\s{2,}', ' ').Trim() }
+  `$lnk = `$shell.CreateShortcut(`$path)
+  `$lnk.Arguments = & `$editArgs `$lnk.Arguments `$enable `$flags
   `$lnk.Save()
 }
 "@

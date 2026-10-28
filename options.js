@@ -3,7 +3,7 @@ import { DEFAULT_DEVICE, listOutputs, getRules, saveRules } from './shared.js';
 const $ = (id) => document.getElementById(id);
 let outputs = [];
 
-$('flag').textContent = `--allowlisted-extension-id=${chrome.runtime.id}`;
+$('flag').textContent = `--allowlisted-extension-id=${chrome.runtime.id} --test-type`;
 
 async function renderAutoRouting() {
   const { autoRouting } = await chrome.storage.local.get('autoRouting');
