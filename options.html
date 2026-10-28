@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Browserput · Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+<main>
+  <h1>Browserput</h1>
+
+  <section id="setup">
+    <h2>1. Device access</h2>
+    <p>To list your outputs by name, the browser needs permission to see your audio devices. It asks for
+      microphone access because that's how Chromium handles it. The extension opens the mic for a moment
+      to get the permission, closes it straight away, and never records anything.</p>
+    <p id="permState" class="state"></p>
+    <button id="grant">Allow access to audio devices</button>
+  </section>
+
+  <section>
+    <h2>2. Your outputs</h2>
+    <p>Play a short tone on each output to check which mixer channel it's on.</p>
+    <ul id="outputs" class="list"></ul>
+  </section>
+
+  <section>
+    <h2>3. Saved sites</h2>
+    <p>Set these from the toolbar popup while you're on a site, or change them here.</p>
+    <table id="rules">
+      <thead><tr><th>Site</th><th>Output</th><th>Volume</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="noRules" class="state" hidden>No sites saved yet.</p>
+  </section>
+
+  <section>
+    <h2>4. Save file &amp; backup</h2>
+    <p>Your saved sites live in the extension's storage inside your Brave profile. Extensions can't read or write
+      files anywhere else on disk, so there isn't a file location to choose. Use these buttons to keep a copy or move your
+      setup to another computer.</p>
+    <div class="buttons">
+      <button id="export">Export saved sites…</button>
+      <button id="importBtn" class="secondary">Import from file…</button>
+      <input id="importFile" type="file" accept="application/json,.json" hidden>
+    </div>
+    <p id="importState" class="state"></p>
+  </section>
+
+  <section>
+    <h2>5. Automatic routing (optional)</h2>
+    <p>Chromium only lets an extension capture a tab after you interact with it on that tab, so normally a
+      saved site shows an orange <b>▶</b> badge. Click the icon once (or press the shortcut) and routing starts.
+      The setting is remembered, so you never pick the device again. The click is needed once per tab after you open the browser.</p>
+    <p>To skip the click entirely, start Brave with this flag. It lets only this extension capture tabs
+      by itself:</p>
+    <pre id="flag"></pre>
+    <p class="state" id="shortcut"></p>
+  </section>
+</main>
+<script type="module" src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="site">
+    <img id="favicon" alt="" width="20" height="20">
+    <span id="host">…</span>
+  </header>
+
+  <section id="controls" hidden>
+    <label class="row volume">
+      <span class="sr-only">Volume</span>
+      <input id="volume" type="range" min="0" max="100" step="1" value="100">
+      <output id="volumeValue">100%</output>
+    </label>
+
+    <label class="sr-only" for="output">Output device</label>
+    <div class="select-wrap">
+      <select id="output"></select>
+      <span id="saved" class="saved" title="Saved for this site" hidden>✓</span>
+    </div>
+
+    <p id="status" class="status"></p>
+  </section>
+
+  <section id="needsPermission" class="notice" hidden>
+    <p>To list your outputs, allow access to your audio devices once.</p>
+    <button id="grant">Set up device access</button>
+  </section>
+
+  <section id="unsupported" class="notice" hidden>
+    <p>Browser pages like this one can't be routed. Open a website to set its output.</p>
+  </section>
+
+  <footer>
+    <button id="forget" class="link" hidden>Forget this site</button>
+    <button id="settings" class="link">Settings</button>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

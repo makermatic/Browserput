@@ -1,0 +1,52 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f6f8;
+  --card: #ffffff;
+  --fg: #1d1d1f;
+  --muted: #6b6b70;
+  --line: #dcdce1;
+  --accent: #2f6fde;
+  --ok: #1f9d55;
+  --warn: #c2410c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a;
+    --card: #1f2023;
+    --fg: #ececf0;
+    --muted: #9a9aa3;
+    --line: #34353a;
+    --accent: #6b9cff;
+    --ok: #4ade80;
+    --warn: #fb923c;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 24px; margin: 0 0 20px; }
+h2 { font-size: 16px; margin: 0 0 8px; }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 16px; }
+section p { margin: 0 0 12px; color: var(--muted); }
+section p b { color: #e08a00; }
+.state { color: var(--fg); }
+.state.ok { color: var(--ok); }
+.state.warn { color: var(--warn); }
+button {
+  font: inherit; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: #fff;
+}
+button.secondary, .list button, td button { background: transparent; color: var(--accent); }
+.buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.list { list-style: none; padding: 0; margin: 0; }
+.list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.list li:first-child { border-top: 0; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px 6px; }
+td { padding: 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+td select { width: 100%; font: inherit; padding: 4px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 5px; }
+td:nth-child(3) { white-space: nowrap; }
+td input[type=range] { width: 100px; accent-color: var(--accent); vertical-align: middle; }
+td .vol { display: inline-block; width: 40px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; user-select: all; }
+@media (max-width: 560px) { td input[type=range] { width: 60px; } }
