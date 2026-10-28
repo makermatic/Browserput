@@ -9,10 +9,11 @@ exit /b
 # Adds (or removes) the flags that let Browserput route saved sites without a
 # click, on every Brave shortcut: desktop, Start menu and taskbar.
 
-# The first flag allows automatic tab capture. --test-type hides the
-# "unsupported command-line flag" banner Brave shows because of it (it also
-# skips a few other startup prompts, like the default-browser reminder).
-$flags = @('--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg', '--test-type')
+# The flag that allows automatic tab capture. --test-type was added by an
+# earlier version to hide Brave's "unsupported command-line flag" banner, but
+# it didn't hide it in Brave, so it is removed again.
+$flags = @('--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg')
+$oldFlags = @('--test-type')
 $shell = New-Object -ComObject WScript.Shell
 
 # Returns shortcut arguments with $remove taken out, then $add appended if enabling.
@@ -57,7 +58,7 @@ foreach ($file in $files) {
   if ($lnk.TargetPath -notlike '*\brave.exe') { continue }
   $found++
   $current = $lnk.Arguments
-  $updated = & $editArgs $current $enable $flags $flags
+  $updated = & $editArgs $current $enable $flags ($flags + $oldFlags)
   if ($updated -eq $current) { $already++; continue }
   $lnk.Arguments = $updated
   try {
@@ -97,12 +98,13 @@ if ($denied.Count -gt 0) {
     $list = ($denied | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ','
     $mode = if ($enable) { '$true' } else { '$false' }
     $addList = '@(' + (($flags | ForEach-Object { "'$_'" }) -join ',') + ')'
+    $removeList = '@(' + ((($flags + $oldFlags) | ForEach-Object { "'$_'" }) -join ',') + ')'
     $elevated = @"
 `$enable = $mode; `$shell = New-Object -ComObject WScript.Shell
 `$editArgs = {$($editArgs.ToString())}
 foreach (`$path in @($list)) {
   `$lnk = `$shell.CreateShortcut(`$path)
-  `$lnk.Arguments = & `$editArgs `$lnk.Arguments `$enable $addList $addList
+  `$lnk.Arguments = & `$editArgs `$lnk.Arguments `$enable $addList $removeList
   `$lnk.Save()
 }
 "@
@@ -120,6 +122,8 @@ foreach (`$path in @($list)) {
   }
 }
 
+Write-Host ''
+Write-Host '  Brave will show an "unsupported command-line flag" banner at startup. It is harmless; click its X to close it.'
 Write-Host ''
 Write-Host '  Last step: fully restart Brave.' -ForegroundColor Cyan
 Write-Host '  - Close every Brave window, and if Brave has an icon near the clock, right-click it > Exit.'
