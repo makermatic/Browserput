@@ -43,7 +43,7 @@ click the icon (or press **Alt+Shift+A**).
 3. Fully close Brave, including its icon near the clock if there is one, and open it again.
    In `brave://settings/system`, turn off *Continue running background apps* so Brave always fully restarts.
 
-Run the same file and type `2` to undo it. The Browserput settings page shows whether automatic routing is working.
+Run the same file and type `2` to undo it. If the banner ever stays after undoing, run **windows/Remove Browserput flags.cmd**: it searches every shortcut on the PC, removes the flags, and restarts Brave without them. The Browserput settings page shows whether automatic routing is working.
 
 **By hand / macOS / Linux:** launch Brave with
 
@@ -108,7 +108,7 @@ Browserput uses Chromium's **tab capture** instead:
 | `popup.*` | Toolbar popup (site, volume, output) |
 | `options.*` | Settings: device access, test tones, saved sites, backup |
 | `shared.js` | Helpers used by all of the above |
-| `windows/` | One-time setup that enables automatic routing on Brave shortcuts |
+| `windows/` | One-time setup that enables automatic routing on Brave shortcuts, and a cleanup that removes the flags everywhere |
 
 No build step: plain JavaScript modules, loaded unpacked.
 
