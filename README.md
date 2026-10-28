@@ -38,7 +38,8 @@ click the icon (or press **Alt+Shift+A**).
 
 1. In the Browserput folder, open `windows` and double-click **Set up automatic routing.cmd**.
    If Windows says it protected your PC, click *More info* → *Run anyway*.
-2. Type `1` and press Enter. It adds the flags below to every Brave shortcut it finds (desktop, Start menu, taskbar).
+2. Type `1` and press Enter. It adds the flag below to every Brave shortcut it finds (desktop, Start menu, taskbar)
+   and turns off Brave's "unsupported command-line flag" banner (see below).
    If it asks about shortcuts shared by all users, type `Y` and approve the Windows prompt.
 3. Fully close Brave, including its icon near the clock if there is one, and open it again.
    In `brave://settings/system`, turn off *Continue running background apps* so Brave always fully restarts.
@@ -48,16 +49,19 @@ Run the same file and type `2` to undo it. The Browserput settings page shows wh
 **By hand / macOS / Linux:** launch Brave with
 
 ```
---allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg --test-type
+--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg
 ```
 
-The first flag allows automatic capture. `--test-type` hides the "You are using an unsupported command-line flag"
-banner that Brave shows because of the first one.
+Brave then shows "You are using an unsupported command-line flag" at startup. The Windows setup turns off just that
+banner with the per-user policy `CommandLineFlagSecurityWarningsEnabled = 0`
+(`HKCU\Software\Policies\BraveSoftware\Brave`). Because a policy is set, Brave's menu says "Managed by your
+organization"; nothing else changes. Check `brave://policy` to see it applied. On Windows PCs that aren't managed by
+an organization, Chromium may ignore this policy, in which case the banner stays (click its ✕ to close it).
 
 If your taskbar icon still opens Brave without the flags (check `brave://version` → Command Line), unpin it, then
 right-click the desktop Brave icon → *Show more options* → *Pin to taskbar*.
 
-- **macOS:** `open -a "Brave Browser" --args --allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg --test-type`
+- **macOS:** `open -a "Brave Browser" --args --allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg`
 - **Linux:** add the flags to the `Exec=` line of the Brave `.desktop` file.
 
 If Brave is opened some other way while it isn't already running (for example by clicking a link in another app),
