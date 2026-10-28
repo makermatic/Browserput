@@ -53,8 +53,10 @@ async function showAccessProblem(error) {
   let hint;
   if (permission === 'denied') {
     hint = 'Brave is blocking it. Go to brave://settings/content/microphone and set Browserput to Allow.';
+  } else if (error?.name === 'NotAllowedError' && /system/i.test(error.message)) {
+    hint = 'Windows is blocking it: Settings → Privacy & security → Microphone → turn on "Microphone access" and "Let desktop apps access your microphone", then fully restart Brave.';
   } else if (error?.name === 'NotAllowedError' && permission === 'granted') {
-    hint = 'Brave allows it, so Windows is probably blocking it: Settings → Privacy & security → Microphone → turn on "Microphone access" and "Let desktop apps access your microphone", then fully restart Brave.';
+    hint = 'Brave allows it but still refused. Make sure you\'re on the latest Browserput (reload it on brave://extensions), then try again.';
   } else if (error?.name === 'NotFoundError') {
     hint = 'No microphone input was found. Brave needs at least one input device (any mic, or your mixer\'s mic input) enabled in Windows sound settings.';
   } else if (error?.name === 'NotReadableError') {
