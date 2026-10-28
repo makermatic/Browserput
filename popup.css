@@ -1,0 +1,100 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1d1d1f;
+  --muted: #6b6b70;
+  --line: #d6d6db;
+  --accent: #2f6fde;
+  --ok: #1f9d55;
+  --warn: #c2410c;
+  --field: #f4f4f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1f22;
+    --fg: #ececf0;
+    --muted: #9a9aa3;
+    --line: #3a3b40;
+    --accent: #6b9cff;
+    --ok: #4ade80;
+    --warn: #fb923c;
+    --field: #2a2b2f;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  width: 320px;
+  padding: 14px 16px 10px;
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+.site {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.site span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#favicon { border-radius: 4px; flex: none; }
+.row { display: flex; align-items: center; gap: 10px; }
+.volume { margin-bottom: 12px; }
+.volume input { flex: 1; accent-color: var(--accent); }
+.volume output { width: 38px; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.select-wrap { position: relative; }
+select {
+  width: 100%;
+  padding: 8px 34px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--fg);
+  font: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+.select-wrap::after {
+  content: "▾";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.saved {
+  position: absolute;
+  right: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ok);
+  font-weight: 700;
+  pointer-events: none;
+}
+.status { margin: 10px 0 0; color: var(--muted); min-height: 1.4em; }
+.status.warn { color: var(--warn); }
+.status.ok { color: var(--ok); }
+.notice p { margin: 0 0 10px; color: var(--muted); }
+button {
+  font: inherit;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+button.link { border: 0; background: none; color: var(--muted); padding: 2px 0; }
+button.link:hover { color: var(--fg); text-decoration: underline; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
