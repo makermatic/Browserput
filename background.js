@@ -22,14 +22,29 @@ async function ensureOffscreen() {
   await creatingOffscreen;
 }
 
+// A just-created document can exist before its script is listening, e.g.
+// when several restored tabs start routing at once. Retry briefly instead of
+// failing those tabs.
+async function sendToOffscreen(message) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await chrome.runtime.sendMessage({ target: 'offscreen', ...message });
+    } catch (e) {
+      if (attempt >= 40 || !/Receiving end does not exist/.test(e?.message)) throw e;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+}
+
 async function toOffscreen(message) {
   await ensureOffscreen();
-  return chrome.runtime.sendMessage({ target: 'offscreen', ...message });
+  return sendToOffscreen(message);
 }
 
 async function activeSessions() {
+  if (creatingOffscreen) await creatingOffscreen.catch(() => {});
   if (!(await hasOffscreen())) return {};
-  return (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'list' })) ?? {};
+  return (await sendToOffscreen({ type: 'list' })) ?? {};
 }
 
 // Captures being started right now, so the document isn't closed under them.
@@ -75,6 +90,7 @@ const BADGES = {
   routed: { text: 'ON', color: '#1f9d55', title: 'Audio routed to: ' },
   fallback: { text: '!', color: '#d64545', title: 'Saved output not found, playing on the default device instead. Saved output: ' },
   pending: { text: '▶', color: '#e08a00', title: 'This site has a saved output. Click to start routing.' },
+  error: { text: '!', color: '#d64545', title: 'Routing failed: ' },
 };
 
 async function setBadge(tabId, result) {
@@ -84,6 +100,7 @@ async function setBadge(tabId, result) {
   let title = badge.title;
   if (kind === 'routed') title += result.sinkLabel;
   if (kind === 'fallback') title += result.wantedLabel;
+  if (kind === 'error') title += result.error;
   try {
     await chrome.action.setBadgeBackgroundColor({ tabId, color: badge.color });
     await chrome.action.setBadgeText({ tabId, text: badge.text });
@@ -106,41 +123,51 @@ function serial(tabId, fn) {
 
 function applyToTab(tabId, url) {
   return serial(tabId, async () => {
-    const host = siteKey(url);
-    const rule = host ? (await getRules())[host] : null;
-    const active = (await activeSessions())[tabId];
-    let result;
-
-    if (!needsCapture(rule)) {
-      if (active) await stopSession(tabId);
-      result = { status: 'idle' };
-    } else if (active) {
-      result = await toOffscreen({ type: 'update', tabId, rule });
-    } else {
-      starting++;
-      try {
-        let streamId = null;
-        const invoked = await wasInvoked(tabId);
-        try {
-          // Only succeeds once the extension has been invoked on this tab
-          // (popup, keyboard shortcut), or when the browser was started with
-          // --allowlisted-extension-id. See README "Automatic routing".
-          streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
-          if (!invoked) await recordAutoRouting(true);
-        } catch (e) {
-          result = { status: 'pending', error: String(e?.message ?? e) };
-          if (/not been invoked/.test(result.error)) await recordAutoRouting(false);
-        }
-        if (streamId) result = await toOffscreen({ type: 'start', tabId, streamId, rule });
-      } finally {
-        starting--;
-      }
-      if (result.status !== 'routed') await closeOffscreenIfIdle();
+    try {
+      return await applyNow(tabId, url);
+    } catch (e) {
+      const result = { status: 'error', error: String(e?.message ?? e) };
+      await setBadge(tabId, result);
+      return result;
     }
-
-    await setBadge(tabId, result);
-    return { ...result, host, rule: rule ?? null };
   });
+}
+
+async function applyNow(tabId, url) {
+  const host = siteKey(url);
+  const rule = host ? (await getRules())[host] : null;
+  const active = (await activeSessions())[tabId];
+  let result;
+
+  if (!needsCapture(rule)) {
+    if (active) await stopSession(tabId);
+    result = { status: 'idle' };
+  } else if (active) {
+    result = await toOffscreen({ type: 'update', tabId, rule });
+  } else {
+    starting++;
+    try {
+      let streamId = null;
+      const invoked = await wasInvoked(tabId);
+      try {
+        // Only succeeds once the extension has been invoked on this tab
+        // (popup, keyboard shortcut), or when the browser was started with
+        // --allowlisted-extension-id. See README "Automatic routing".
+        streamId = await chrome.tabCapture.getMediaStreamId({ targetTabId: tabId });
+        if (!invoked) await recordAutoRouting(true);
+      } catch (e) {
+        result = { status: 'pending', error: String(e?.message ?? e) };
+        if (/not been invoked/.test(result.error)) await recordAutoRouting(false);
+      }
+      if (streamId) result = await toOffscreen({ type: 'start', tabId, streamId, rule });
+    } finally {
+      starting--;
+    }
+    if (result.status !== 'routed') await closeOffscreenIfIdle();
+  }
+
+  await setBadge(tabId, result);
+  return { ...result, host, rule: rule ?? null };
 }
 
 async function applyToAllTabs(filterHost) {

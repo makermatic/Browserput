@@ -6,11 +6,31 @@ pause
 exit /b
 #>
 
-# Adds (or removes) the flag that lets Browserput route saved sites without a
+# Adds (or removes) the flags that let Browserput route saved sites without a
 # click, on every Brave shortcut: desktop, Start menu and taskbar.
 
-$flag = '--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg'
+# The flag that allows automatic tab capture. --test-type was added by an
+# earlier version to hide Brave's "unsupported command-line flag" banner, but
+# it didn't hide it in Brave, so it is removed again.
+$flags = @('--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg')
+$oldFlags = @('--test-type')
 $shell = New-Object -ComObject WScript.Shell
+
+# Returns shortcut arguments with $remove taken out, then $add appended if enabling.
+$editArgs = {
+  param($current, $enable, $add, $remove)
+  $result = $current
+  foreach ($f in $remove) { $result = $result -replace ('(^|\s)' + [regex]::Escape($f) + '(?=\s|$)'), ' ' }
+  $result = ($result -replace '\s{2,}', ' ').Trim()
+  if ($enable) { $result = ($result + ' ' + ($add -join ' ')).Trim() }
+  $result
+}
+
+# An earlier version set this policy to hide only the banner, but Brave
+# ignores it on PCs not managed by an organization and shows "Managed by your
+# organization" because of it, so it is removed.
+$policyKey = 'HKCU:\Software\Policies\BraveSoftware\Brave'
+$policyName = 'CommandLineFlagSecurityWarningsEnabled'
 
 Write-Host ''
 Write-Host '  Browserput - automatic routing setup' -ForegroundColor Cyan
@@ -38,13 +58,9 @@ foreach ($file in $files) {
   if ($lnk.TargetPath -notlike '*\brave.exe') { continue }
   $found++
   $current = $lnk.Arguments
-  $has = $current -like "*$flag*"
-  if ($enable -eq $has) { $already++; continue }
-  if ($enable) {
-    $lnk.Arguments = ("$current $flag").Trim()
-  } else {
-    $lnk.Arguments = (($current -replace [regex]::Escape($flag), '') -replace '\s{2,}', ' ').Trim()
-  }
+  $updated = & $editArgs $current $enable $flags ($flags + $oldFlags)
+  if ($updated -eq $current) { $already++; continue }
+  $lnk.Arguments = $updated
   try {
     $lnk.Save()
     $changed++
@@ -58,18 +74,56 @@ Write-Host ''
 if ($found -eq 0) {
   Write-Host '  No Brave shortcuts were found.' -ForegroundColor Yellow
   Write-Host "  Add this to your Brave shortcut by hand (Properties > Target, after the closing quote):"
-  Write-Host "  $flag"
+  Write-Host "  $($flags -join ' ')"
   return
 }
 $state = if ($enable) { 'ON' } else { 'OFF' }
 Write-Host "  Automatic routing is now $state for $($changed + $already) Brave shortcut(s)." -ForegroundColor Green
+
+if ((Test-Path -LiteralPath $policyKey) -and ($null -ne (Get-ItemProperty -LiteralPath $policyKey -Name $policyName -ErrorAction SilentlyContinue))) {
+  Remove-ItemProperty -LiteralPath $policyKey -Name $policyName -ErrorAction SilentlyContinue
+  # Leave no empty key behind, so Brave stops saying it is managed.
+  if (-not (Get-Item -LiteralPath $policyKey).Property -and -not (Get-ChildItem -LiteralPath $policyKey)) {
+    Remove-Item -LiteralPath $policyKey -ErrorAction SilentlyContinue
+  }
+  Write-Host '  Removed the old banner policy (Brave ignored it on this PC).' -ForegroundColor Green
+}
 if ($denied.Count -gt 0) {
   Write-Host ''
-  Write-Host '  These shortcuts belong to all users and need administrator rights:' -ForegroundColor Yellow
+  Write-Host '  These shortcuts are shared by all users (the Start menu one is also what Windows search opens):' -ForegroundColor Yellow
   $denied | ForEach-Object { Write-Host "    $_" }
-  Write-Host '  Right-click this file and choose "Run as administrator" to update them too.' -ForegroundColor Yellow
+  $answer = Read-Host '  Update them too? Windows will ask for permission. (Y/N)'
+  if ($answer.Trim() -match '^[Yy]') {
+    # Re-run just the shortcut edit for these files with administrator rights.
+    $list = ($denied | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ','
+    $mode = if ($enable) { '$true' } else { '$false' }
+    $addList = '@(' + (($flags | ForEach-Object { "'$_'" }) -join ',') + ')'
+    $removeList = '@(' + ((($flags + $oldFlags) | ForEach-Object { "'$_'" }) -join ',') + ')'
+    $elevated = @"
+`$enable = $mode; `$shell = New-Object -ComObject WScript.Shell
+`$editArgs = {$($editArgs.ToString())}
+foreach (`$path in @($list)) {
+  `$lnk = `$shell.CreateShortcut(`$path)
+  `$lnk.Arguments = & `$editArgs `$lnk.Arguments `$enable $addList $removeList
+  `$lnk.Save()
+}
+"@
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevated))
+    try {
+      $proc = Start-Process powershell -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
+      if ($proc.ExitCode -eq 0) {
+        Write-Host '  Updated the shared shortcuts too.' -ForegroundColor Green
+      } else {
+        Write-Host '  Could not update the shared shortcuts.' -ForegroundColor Yellow
+      }
+    } catch {
+      Write-Host '  Permission was not given, so the shared shortcuts were left as they were.' -ForegroundColor Yellow
+    }
+  }
 }
 
+Write-Host ''
+Write-Host '  Brave will show an "unsupported command-line flag" banner at startup. It is harmless; click its X to close it.'
 Write-Host ''
 Write-Host '  Last step: fully restart Brave.' -ForegroundColor Cyan
 Write-Host '  - Close every Brave window, and if Brave has an icon near the clock, right-click it > Exit.'

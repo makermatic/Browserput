@@ -75,6 +75,8 @@ select {
   pointer-events: none;
 }
 .status { margin: 10px 0 0; color: var(--warn); }
+.note { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.note a { color: var(--accent); }
 .notice p { margin: 0 0 10px; color: var(--muted); }
 button {
   font: inherit;
