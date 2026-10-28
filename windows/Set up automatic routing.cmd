@@ -9,11 +9,10 @@ exit /b
 # Adds (or removes) the flags that let Browserput route saved sites without a
 # click, on every Brave shortcut: desktop, Start menu and taskbar.
 
-# The flag that allows automatic tab capture. --test-type was added by an
-# earlier version of this script; it is removed again because it hid every
-# startup message, not just the flag warning.
-$flags = @('--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg')
-$oldFlags = @('--test-type')
+# The first flag allows automatic tab capture. --test-type hides the
+# "unsupported command-line flag" banner Brave shows because of it (it also
+# skips a few other startup prompts, like the default-browser reminder).
+$flags = @('--allowlisted-extension-id=nkdalbdkkidbglmmihmdjcmbpliddhpg', '--test-type')
 $shell = New-Object -ComObject WScript.Shell
 
 # Returns shortcut arguments with $remove taken out, then $add appended if enabling.
@@ -26,8 +25,9 @@ $editArgs = {
   $result
 }
 
-# Brave policy that turns off only the "unsupported command-line flag" banner.
-# Per-user, so no administrator rights needed.
+# An earlier version set this policy to hide only the banner, but Brave
+# ignores it on PCs not managed by an organization and shows "Managed by your
+# organization" because of it, so it is removed.
 $policyKey = 'HKCU:\Software\Policies\BraveSoftware\Brave'
 $policyName = 'CommandLineFlagSecurityWarningsEnabled'
 
@@ -57,7 +57,7 @@ foreach ($file in $files) {
   if ($lnk.TargetPath -notlike '*\brave.exe') { continue }
   $found++
   $current = $lnk.Arguments
-  $updated = & $editArgs $current $enable $flags ($flags + $oldFlags)
+  $updated = & $editArgs $current $enable $flags $flags
   if ($updated -eq $current) { $already++; continue }
   $lnk.Arguments = $updated
   try {
@@ -79,17 +79,13 @@ if ($found -eq 0) {
 $state = if ($enable) { 'ON' } else { 'OFF' }
 Write-Host "  Automatic routing is now $state for $($changed + $already) Brave shortcut(s)." -ForegroundColor Green
 
-try {
-  if ($enable) {
-    if (-not (Test-Path -LiteralPath $policyKey)) { New-Item -Path $policyKey -Force | Out-Null }
-    New-ItemProperty -LiteralPath $policyKey -Name $policyName -PropertyType DWord -Value 0 -Force | Out-Null
-    Write-Host '  Turned off the "unsupported command-line flag" banner.' -ForegroundColor Green
-  } elseif (Test-Path -LiteralPath $policyKey) {
-    Remove-ItemProperty -LiteralPath $policyKey -Name $policyName -ErrorAction SilentlyContinue
-    Write-Host '  Restored the "unsupported command-line flag" banner setting.' -ForegroundColor Green
+if ((Test-Path -LiteralPath $policyKey) -and ($null -ne (Get-ItemProperty -LiteralPath $policyKey -Name $policyName -ErrorAction SilentlyContinue))) {
+  Remove-ItemProperty -LiteralPath $policyKey -Name $policyName -ErrorAction SilentlyContinue
+  # Leave no empty key behind, so Brave stops saying it is managed.
+  if (-not (Get-Item -LiteralPath $policyKey).Property -and -not (Get-ChildItem -LiteralPath $policyKey)) {
+    Remove-Item -LiteralPath $policyKey -ErrorAction SilentlyContinue
   }
-} catch {
-  Write-Host "  Couldn't change the banner setting: $($_.Exception.Message)" -ForegroundColor Yellow
+  Write-Host '  Removed the old banner policy (Brave ignored it on this PC).' -ForegroundColor Green
 }
 if ($denied.Count -gt 0) {
   Write-Host ''
@@ -101,13 +97,12 @@ if ($denied.Count -gt 0) {
     $list = ($denied | ForEach-Object { "'" + ($_ -replace "'", "''") + "'" }) -join ','
     $mode = if ($enable) { '$true' } else { '$false' }
     $addList = '@(' + (($flags | ForEach-Object { "'$_'" }) -join ',') + ')'
-    $removeList = '@(' + ((($flags + $oldFlags) | ForEach-Object { "'$_'" }) -join ',') + ')'
     $elevated = @"
 `$enable = $mode; `$shell = New-Object -ComObject WScript.Shell
 `$editArgs = {$($editArgs.ToString())}
 foreach (`$path in @($list)) {
   `$lnk = `$shell.CreateShortcut(`$path)
-  `$lnk.Arguments = & `$editArgs `$lnk.Arguments `$enable $addList $removeList
+  `$lnk.Arguments = & `$editArgs `$lnk.Arguments `$enable $addList $addList
   `$lnk.Save()
 }
 "@
